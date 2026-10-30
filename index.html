@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fake It Till You Make It</title>
+<style>
+:root{--bg:#10111b;--panel:#1b1d2b;--panel2:#24273a;--text:#f5f5fb;--muted:#a8abc0;--accent:#a78bfa;--pink:#f472b6;--green:#4ade80;--red:#fb7185}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0%,#30234d 0,transparent 35%),var(--bg);color:var(--text);font-family:Inter,system-ui,Arial,sans-serif;min-height:100vh}
+main{max-width:950px;margin:auto;padding:28px 18px 60px}.brand{text-align:center;margin:12px 0 28px}.brand .eyebrow{color:var(--pink);font-weight:800;letter-spacing:3px;font-size:12px}.brand h1{font-size:clamp(30px,6vw,52px);margin:8px 0;line-height:1.05}.brand h1 span{color:var(--accent)}.brand p{color:var(--muted);margin:8px 0}
+.panel{background:linear-gradient(145deg,#202236,#181a28);border:1px solid #353850;border-radius:22px;padding:24px;box-shadow:0 18px 60px #0005;margin:16px 0}
+h2{margin:0 0 12px;font-size:22px}p{line-height:1.55}.muted{color:var(--muted)}label{display:block;color:var(--muted);font-size:13px;margin:14px 0 7px}
+input,textarea,select{width:100%;background:#111321;border:1px solid #41445d;border-radius:12px;padding:13px 14px;color:white;font:inherit;outline:none}textarea{min-height:100px;resize:vertical}input:focus,textarea:focus{border-color:var(--accent)}
+button{border:0;border-radius:12px;padding:13px 18px;background:var(--accent);color:#171326;font-weight:800;font-size:15px;cursor:pointer;margin:6px 6px 0 0}button.secondary{background:#343750;color:white}button.pink{background:var(--pink);color:#24101c}button:disabled{opacity:.4;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.hidden{display:none!important}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-top:14px}.player{background:#111321;border:1px solid #343750;border-radius:14px;padding:13px}.player strong{display:block}.score{color:var(--green);font-weight:800}.pill{display:inline-block;border-radius:99px;padding:5px 10px;background:#34304d;color:#d8ccff;font-size:12px;font-weight:700}
+.prompt{font-size:22px;line-height:1.35;font-weight:750;margin:16px 0}.notice{padding:13px 15px;border-radius:12px;background:#292541;color:#ded5ff;margin:12px 0}.status{color:var(--green);font-weight:700}.error{color:#fecaca;background:#4b2029;padding:10px 13px;border-radius:10px;margin-top:12px}.result{font-size:19px;font-weight:800}.footer{text-align:center;color:#777b94;font-size:12px;margin-top:30px}
+@media(max-width:650px){.grid{grid-template-columns:1fr}.panel{padding:18px}main{padding:18px 12px 40px}}
+</style>
+</head>
+<body><main>
+<header class="brand"><div class="eyebrow">THE BLUFFING PARTY GAME</div><h1>FAKE IT <span>TILL YOU</span><br>MAKE IT</h1><p>Can your friends spot the truth from a brilliant bluff?</p></header>
+<section id="home" class="panel">
+<h2>Ready to play?</h2><p class="muted">Create a room and invite friends with a 5-character code, or join a friend's room. 2–8 players • 3–10 rounds.</p>
+<label>Your player name</label><input id="name" maxlength="18" placeholder="Enter your name">
+<div class="grid"><div><label>Rounds (host only)</label><select id="rounds"><option>3</option><option selected>5</option><option>7</option><option>10</option></select><button id="create">Create a room</button></div>
+<div><label>Room code</label><input id="roomCode" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase"><button id="join" class="secondary">Join a room</button></div></div>
+<div id="homeError" class="error hidden"></div>
+</section>
+<section id="lobby" class="panel hidden"><div class="pill">ROOM <span id="codeLabel"></span></div><h2 style="margin-top:14px">Waiting room</h2><p class="muted">Share this code with your friends. The host can start when at least 2 players have joined.</p><div class="actions"><button id="copyCode" class="secondary">Copy room code</button><button id="start">Start game</button></div><div id="lobbyPlayers" class="players"></div><div id="lobbyHint" class="notice">Waiting for players…</div></section>
+<section id="game" class="panel hidden"><div class="grid"><div><span class="pill" id="roundLabel">ROUND 1</span><h2 id="phaseTitle" style="margin-top:12px">Your turn</h2></div><div style="text-align:right"><span class="muted">ROOM</span><div id="gameCode" style="font-weight:800"></div></div></div>
+<div class="notice"><strong>Challenge:</strong><div id="prompt" class="prompt"></div></div>
+<div id="storyBox" class="hidden"><p class="muted">You're the storyteller. Write a statement about yourself, then privately mark whether it is true or a bluff. Everyone else will vote.</p><label>Your statement</label><textarea id="statement" maxlength="240" placeholder="Example: I once won a local singing competition…"></textarea><label>Is your statement true?</label><div class="actions"><button id="truth" class="secondary">It's TRUE</button><button id="bluff" class="pink">It's a BLUFF</button></div></div>
+<div id="waitingStory" class="notice hidden">The storyteller is preparing a statement. Get ready to vote!</div>
+<div id="voteBox" class="hidden"><p class="muted">Read the statement. Do you believe it?</p><div id="statementText" class="prompt"></div><div class="actions"><button id="voteTrue">I believe it's TRUE</button><button id="voteFalse" class="pink">I think it's FAKE</button></div><p id="voteStatus" class="muted"></p></div>
+<div id="resultBox" class="hidden"><div class="result" id="resultTitle"></div><p id="resultText"></p><div class="notice" id="resultVotes"></div><button id="next">Next round</button></div>
+<div id="scoreboard" class="players"></div></section>
+<section id="finished" class="panel hidden"><span class="pill">GAME COMPLETE</span><h2 style="margin-top:14px">The final reveal</h2><p class="muted">Here are the ultimate truth detectors and master bluffers.</p><div id="finalScores" class="players"></div><button id="restart">Play again</button></section>
+<div id="globalError" class="error hidden"></div><div class="footer">Made for clever minds, bold bluffs, and unforgettable game nights.</div>
+</main>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket=io(); let myId=null, room=null, isStoryteller=false, hasVoted=false, selectedTruth=null;
+const $=id=>document.getElementById(id);
+function show(id){$(id).classList.remove("hidden")} function hide(id){$(id).classList.add("hidden")}
+function err(msg, where="globalError"){ $(where).textContent=msg; show(where); setTimeout(()=>hide(where),5000); }
+function name(){return $("name").value.trim()||"Player"}
+function playersHtml(players){return players.slice().sort((a,b)=>b.score-a.score).map(p=>`<div class="player"><strong>${escapeHtml(p.name)} ${p.id===room?.hostId?"👑":""}</strong><span class="muted">${p.connected?"Online":"Reconnecting…"}</span><div class="score">${p.score} points</div></div>`).join("")}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function render(){
+ if(!room)return;
+ hide("home"); hide("lobby"); hide("game"); hide("finished");
+ $("codeLabel").textContent=room.code; $("gameCode").textContent=room.code;
+ if(room.status==="waiting"){
+   show("lobby"); $("lobbyPlayers").innerHTML=playersHtml(room.players);
+   $("start").disabled=room.hostId!==myId||room.players.length<2;
+   $("start").textContent=room.hostId===myId?"Start game":"Waiting for host";
+   $("lobbyHint").textContent=room.players.length<2?"Share the room code. You need at least one more player.":"Everyone is here. The host can start the game!";
+ } else if(room.status==="finished"){
+   show("finished"); $("finalScores").innerHTML=playersHtml(room.players);
+ } else {
+   show("game"); $("roundLabel").textContent=`ROUND ${room.round} / ${room.maxRounds}`;
+   $("prompt").textContent=room.prompt||"";
+   $("scoreboard").innerHTML=playersHtml(room.players);
+   hide("storyBox");hide("waitingStory");hide("voteBox");hide("resultBox");
+   if(room.status==="story"){
+     $("phaseTitle").textContent=room.storytellerId===myId?"Your turn to bluff":"Storyteller is thinking";
+     if(isStoryteller)show("storyBox");else show("waitingStory");
+   }
+   if(room.status==="voting"){
+     $("phaseTitle").textContent="Truth or bluff?";
+     $("statementText").textContent=room.statement||"";
+     if(room.storytellerId===myId){show("waitingStory");$("waitingStory").textContent="Everyone is voting on your statement…";}
+     else {show("voteBox");$("voteTrue").disabled=hasVoted;$("voteFalse").disabled=hasVoted;$("voteStatus").textContent=`${room.votesCount} of ${room.totalVoters} votes received${hasVoted?" • Your vote is locked":""}`;}
+   }
+   if(room.status==="result"&&room.result){
+     show("resultBox"); const r=room.result;
+     $("resultTitle").textContent=r.truth?"It was the TRUTH!":"That was a BLUFF!";
+     $("resultText").textContent=`${r.storytellerName} said: “${r.statement}”`;
+     const voteNames=Object.entries(r.votes).map(([id,v])=>{const p=room.players.find(x=>x.id===id);return `${p?p.name:"Player"}: ${v?"True":"Fake"}`});
+     $("resultVotes").textContent="Votes — "+voteNames.join(" • ");
+     $("next").disabled=room.hostId!==myId;$("next").textContent=room.hostId===myId?"Next round":"Waiting for host";
+   }
+ }
+}
+$("create").onclick=()=>socket.emit("room:create",{name:name(),maxRounds:$("rounds").value});
+$("join").onclick=()=>socket.emit("room:join",{name:name(),code:$("roomCode").value});
+$("start").onclick=()=>socket.emit("game:start");
+$("copyCode").onclick=()=>navigator.clipboard?.writeText(room.code).then(()=>$("copyCode").textContent="Copied!").catch(()=>err("Copy failed — write down the code."));
+$("truth").onclick=()=>submitStory(true); $("bluff").onclick=()=>submitStory(false);
+function submitStory(truth){const statement=$("statement").value.trim();if(statement.length<5)return err("Please write at least 5 characters.");socket.emit("story:submit",{statement,truth});}
+$("voteTrue").onclick=()=>vote(true);$("voteFalse").onclick=()=>vote(false);
+function vote(v){if(hasVoted)return;hasVoted=true;socket.emit("vote:submit",{vote:v});$("voteTrue").disabled=true;$("voteFalse").disabled=true;}
+$("next").onclick=()=>socket.emit("round:next");$("restart").onclick=()=>socket.emit("game:restart");
+socket.on("room:joined",d=>{myId=d.playerId;hide("homeError");});
+socket.on("room:update",r=>{const previous=room?.round;room=r;if(previous!==r.round)hasVoted=false;render();});
+socket.on("round:private",d=>{isStoryteller=d.storytellerId===myId;hasVoted=false;if(isStoryteller)$("statement").value="";});
+socket.on("app:error",m=>{err(m, room?"globalError":"homeError");});
+socket.on("connect",()=>{myId=socket.id;});
+socket.on("disconnect",()=>err("Connection lost. Refresh the page to reconnect."));
+</script></body></html>
